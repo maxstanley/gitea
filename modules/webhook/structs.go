@@ -3,6 +3,8 @@
 
 package webhook
 
+import "code.gitea.io/gitea/modules/util"
+
 // HookEvents is a set of web hook events
 type HookEvents struct {
 	Create                   bool `json:"create"`
@@ -26,6 +28,41 @@ type HookEvents struct {
 	Repository               bool `json:"repository"`
 	Release                  bool `json:"release"`
 	Package                  bool `json:"package"`
+}
+
+// ParseHookEvents converts a list of strings to HookEvents
+func ParseHookEvents(eventTypes []string) HookEvents {
+	caseInsensitive := true
+	return HookEvents{
+		Create:                   util.SliceContainsString(eventTypes, HookEventCreate.Event(), caseInsensitive),
+		Delete:                   util.SliceContainsString(eventTypes, HookEventDelete.Event(), caseInsensitive),
+		Fork:                     util.SliceContainsString(eventTypes, HookEventFork.Event(), caseInsensitive),
+		Issues:                   issuesHook(eventTypes, "issues_only", caseInsensitive),
+		IssueAssign:              issuesHook(eventTypes, HookEventIssueAssign.Event(), caseInsensitive),
+		IssueLabel:               issuesHook(eventTypes, HookEventIssueLabel.Event(), caseInsensitive),
+		IssueMilestone:           issuesHook(eventTypes, HookEventIssueMilestone.Event(), caseInsensitive),
+		IssueComment:             issuesHook(eventTypes, HookEventIssueComment.Event(), caseInsensitive),
+		Push:                     util.SliceContainsString(eventTypes, HookEventPush.Event(), caseInsensitive),
+		PullRequest:              pullHook(eventTypes, "pull_request_only", caseInsensitive),
+		PullRequestAssign:        pullHook(eventTypes, HookEventPullRequestAssign.Event(), caseInsensitive),
+		PullRequestLabel:         pullHook(eventTypes, HookEventPullRequestLabel.Event(), caseInsensitive),
+		PullRequestMilestone:     pullHook(eventTypes, HookEventPullRequestMilestone.Event(), caseInsensitive),
+		PullRequestComment:       pullHook(eventTypes, HookEventPullRequestComment.Event(), caseInsensitive),
+		PullRequestReview:        pullHook(eventTypes, "pull_request_review", caseInsensitive),
+		PullRequestReviewRequest: pullHook(eventTypes, HookEventPullRequestReviewRequest.Event(), caseInsensitive),
+		PullRequestSync:          pullHook(eventTypes, HookEventPullRequestSync.Event(), caseInsensitive),
+		Wiki:                     util.SliceContainsString(eventTypes, HookEventWiki.Event(), caseInsensitive),
+		Repository:               util.SliceContainsString(eventTypes, HookEventRepository.Event(), caseInsensitive),
+		Release:                  util.SliceContainsString(eventTypes, HookEventRelease.Event(), caseInsensitive),
+	}
+}
+
+func issuesHook(events []string, event string, caseInsensitive bool) bool {
+	return util.SliceContainsString(events, event, caseInsensitive) || util.SliceContainsString(events, HookEventIssues.Event(), caseInsensitive)
+}
+
+func pullHook(events []string, event string, caseInsensitive bool) bool {
+	return util.SliceContainsString(events, event, caseInsensitive) || util.SliceContainsString(events, HookEventPullRequest.Event(), caseInsensitive)
 }
 
 // HookEvent represents events that will delivery hook.
