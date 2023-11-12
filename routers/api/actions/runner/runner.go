@@ -13,6 +13,7 @@ import (
 	"code.gitea.io/gitea/modules/log"
 	"code.gitea.io/gitea/modules/util"
 	actions_service "code.gitea.io/gitea/services/actions"
+	notify_service "code.gitea.io/gitea/services/notify"
 
 	runnerv1 "code.gitea.io/actions-proto-go/runner/v1"
 	"code.gitea.io/actions-proto-go/runner/v1/runnerv1connect"
@@ -172,6 +173,11 @@ func (s *Service) UpdateTask(
 	task, err := actions_model.UpdateTaskByState(ctx, req.Msg.State)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "update task: %v", err)
+	}
+
+	if task.Status.IsDone() {
+		// notify task completed
+		notify_service.CompletedWorkflowRun(ctx, task.Job.Run)
 	}
 
 	for k, v := range req.Msg.Outputs {

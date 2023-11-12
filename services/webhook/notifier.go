@@ -6,6 +6,7 @@ package webhook
 import (
 	"context"
 
+	actions_model "code.gitea.io/gitea/models/actions"
 	issues_model "code.gitea.io/gitea/models/issues"
 	packages_model "code.gitea.io/gitea/models/packages"
 	"code.gitea.io/gitea/models/perm"
@@ -77,6 +78,15 @@ func (m *webhookNotifier) IssueClearLabels(ctx context.Context, doer *user_model
 	}
 }
 
+func repositoryPayloadHook(ctx context.Context, doer *user_model.User, repo *repo_model.Repository, user *user_model.User, action api.HookRepoAction) error {
+	return PrepareWebhooks(ctx, EventSource{Repository: repo}, webhook_module.HookEventRepository, &api.RepositoryPayload{
+		Action:       action,
+		Repository:   convert.ToRepo(ctx, repo, access_model.Permission{AccessMode: perm.AccessModeOwner}),
+		Organization: convert.ToUser(ctx, user, nil),
+		Sender:       convert.ToUser(ctx, doer, nil),
+	})
+}
+
 func (m *webhookNotifier) ForkRepository(ctx context.Context, doer *user_model.User, oldRepo, repo *repo_model.Repository) {
 	oldPermission, _ := access_model.GetUserRepoPermission(ctx, oldRepo, doer)
 	permission, _ := access_model.GetUserRepoPermission(ctx, repo, doer)
@@ -94,12 +104,7 @@ func (m *webhookNotifier) ForkRepository(ctx context.Context, doer *user_model.U
 
 	// Add to hook queue for created repo after session commit.
 	if u.IsOrganization() {
-		if err := PrepareWebhooks(ctx, EventSource{Repository: repo}, webhook_module.HookEventRepository, &api.RepositoryPayload{
-			Action:       api.HookRepoCreated,
-			Repository:   convert.ToRepo(ctx, repo, access_model.Permission{AccessMode: perm.AccessModeOwner}),
-			Organization: convert.ToUser(ctx, u, nil),
-			Sender:       convert.ToUser(ctx, doer, nil),
-		}); err != nil {
+		if err := repositoryPayloadHook(ctx, doer, repo, u, api.HookRepoCreated); err != nil {
 			log.Error("PrepareWebhooks [repo_id: %d]: %v", repo.ID, err)
 		}
 	}
@@ -107,35 +112,21 @@ func (m *webhookNotifier) ForkRepository(ctx context.Context, doer *user_model.U
 
 func (m *webhookNotifier) CreateRepository(ctx context.Context, doer, u *user_model.User, repo *repo_model.Repository) {
 	// Add to hook queue for created repo after session commit.
-	if err := PrepareWebhooks(ctx, EventSource{Repository: repo}, webhook_module.HookEventRepository, &api.RepositoryPayload{
-		Action:       api.HookRepoCreated,
-		Repository:   convert.ToRepo(ctx, repo, access_model.Permission{AccessMode: perm.AccessModeOwner}),
-		Organization: convert.ToUser(ctx, u, nil),
-		Sender:       convert.ToUser(ctx, doer, nil),
-	}); err != nil {
+	if err := repositoryPayloadHook(ctx, doer, repo, u, api.HookRepoCreated); err != nil {
 		log.Error("PrepareWebhooks [repo_id: %d]: %v", repo.ID, err)
 	}
 }
 
 func (m *webhookNotifier) DeleteRepository(ctx context.Context, doer *user_model.User, repo *repo_model.Repository) {
-	if err := PrepareWebhooks(ctx, EventSource{Repository: repo}, webhook_module.HookEventRepository, &api.RepositoryPayload{
-		Action:       api.HookRepoDeleted,
-		Repository:   convert.ToRepo(ctx, repo, access_model.Permission{AccessMode: perm.AccessModeOwner}),
-		Organization: convert.ToUser(ctx, repo.MustOwner(ctx), nil),
-		Sender:       convert.ToUser(ctx, doer, nil),
-	}); err != nil {
+	u := repo.MustOwner(ctx)
+	if err := repositoryPayloadHook(ctx, doer, repo, u, api.HookRepoDeleted); err != nil {
 		log.Error("PrepareWebhooks [repo_id: %d]: %v", repo.ID, err)
 	}
 }
 
 func (m *webhookNotifier) MigrateRepository(ctx context.Context, doer, u *user_model.User, repo *repo_model.Repository) {
 	// Add to hook queue for created repo after session commit.
-	if err := PrepareWebhooks(ctx, EventSource{Repository: repo}, webhook_module.HookEventRepository, &api.RepositoryPayload{
-		Action:       api.HookRepoCreated,
-		Repository:   convert.ToRepo(ctx, repo, access_model.Permission{AccessMode: perm.AccessModeOwner}),
-		Organization: convert.ToUser(ctx, u, nil),
-		Sender:       convert.ToUser(ctx, doer, nil),
-	}); err != nil {
+	if err := repositoryPayloadHook(ctx, doer, repo, u, api.HookRepoCreated); err != nil {
 		log.Error("PrepareWebhooks [repo_id: %d]: %v", repo.ID, err)
 	}
 }
@@ -459,10 +450,9 @@ func (m *webhookNotifier) DeleteComment(ctx context.Context, doer *user_model.Us
 	}
 }
 
-func (m *webhookNotifier) NewWikiPage(ctx context.Context, doer *user_model.User, repo *repo_model.Repository, page, comment string) {
-	// Add to hook queue for created wiki page.
+func wikiPageNotifier(ctx context.Context, doer *user_model.User, repo *repo_model.Repository, page, comment string, action api.HookWikiAction) {
 	if err := PrepareWebhooks(ctx, EventSource{Repository: repo}, webhook_module.HookEventWiki, &api.WikiPayload{
-		Action:     api.HookWikiCreated,
+		Action:     action,
 		Repository: convert.ToRepo(ctx, repo, access_model.Permission{AccessMode: perm.AccessModeOwner}),
 		Sender:     convert.ToUser(ctx, doer, nil),
 		Page:       page,
@@ -470,31 +460,21 @@ func (m *webhookNotifier) NewWikiPage(ctx context.Context, doer *user_model.User
 	}); err != nil {
 		log.Error("PrepareWebhooks [repo_id: %d]: %v", repo.ID, err)
 	}
+}
+
+func (m *webhookNotifier) NewWikiPage(ctx context.Context, doer *user_model.User, repo *repo_model.Repository, page, comment string) {
+	// Add to hook queue for created wiki page.
+	wikiPageNotifier(ctx, doer, repo, page, comment, api.HookWikiCreated)
 }
 
 func (m *webhookNotifier) EditWikiPage(ctx context.Context, doer *user_model.User, repo *repo_model.Repository, page, comment string) {
 	// Add to hook queue for edit wiki page.
-	if err := PrepareWebhooks(ctx, EventSource{Repository: repo}, webhook_module.HookEventWiki, &api.WikiPayload{
-		Action:     api.HookWikiEdited,
-		Repository: convert.ToRepo(ctx, repo, access_model.Permission{AccessMode: perm.AccessModeOwner}),
-		Sender:     convert.ToUser(ctx, doer, nil),
-		Page:       page,
-		Comment:    comment,
-	}); err != nil {
-		log.Error("PrepareWebhooks [repo_id: %d]: %v", repo.ID, err)
-	}
+	wikiPageNotifier(ctx, doer, repo, page, comment, api.HookWikiEdited)
 }
 
 func (m *webhookNotifier) DeleteWikiPage(ctx context.Context, doer *user_model.User, repo *repo_model.Repository, page string) {
-	// Add to hook queue for edit wiki page.
-	if err := PrepareWebhooks(ctx, EventSource{Repository: repo}, webhook_module.HookEventWiki, &api.WikiPayload{
-		Action:     api.HookWikiDeleted,
-		Repository: convert.ToRepo(ctx, repo, access_model.Permission{AccessMode: perm.AccessModeOwner}),
-		Sender:     convert.ToUser(ctx, doer, nil),
-		Page:       page,
-	}); err != nil {
-		log.Error("PrepareWebhooks [repo_id: %d]: %v", repo.ID, err)
-	}
+	// Add to hook queue for delete wiki page.
+	wikiPageNotifier(ctx, doer, repo, page, "", api.HookWikiDeleted)
 }
 
 func (m *webhookNotifier) IssueChangeLabels(ctx context.Context, doer *user_model.User, issue *issues_model.Issue,
@@ -886,4 +866,40 @@ func notifyPackage(ctx context.Context, sender *user_model.User, pd *packages_mo
 	}); err != nil {
 		log.Error("PrepareWebhooks: %v", err)
 	}
+}
+
+func notifyWorkflowRun(ctx context.Context, doer *user_model.User, run *actions_model.ActionRun, action api.HookWorkflowRunAction) {
+	artifacts := []api.ArtifactPayload{}
+	if action == api.HookWorkflowRunCompleted {
+		as, err := actions_model.ListArtifactsByRunID(ctx, run.ID)
+		if err != nil {
+			log.Error("Failed to get run artifacts: %v", err)
+		}
+
+		for _, artifact := range as {
+			artifacts = append(artifacts, *convert.ToArtifact(ctx, artifact))
+		}
+	}
+
+	if err := PrepareWebhooks(ctx, EventSource{Repository: run.Repo}, webhook_module.HookEventWorkflowRun, &api.WorkflowRunPayload{
+		Action:     action,
+		Repository: convert.ToRepo(ctx, run.Repo, access_model.Permission{AccessMode: perm.AccessModeOwner}),
+		Sender:     convert.ToUser(ctx, doer, nil),
+		ActionRun:  convert.ToActionRun(ctx, run),
+		Artifacts:  &artifacts,
+	}); err != nil {
+		log.Error("PrepareWebhooks: %v", err)
+	}
+}
+
+func (m *webhookNotifier) RequestedWorkflowRun(ctx context.Context, run *actions_model.ActionRun) {
+	notifyWorkflowRun(ctx, run.TriggerUser, run, api.HookWorkflowRunRequested)
+}
+
+func (m *webhookNotifier) StartedWorkflowRun(ctx context.Context, run *actions_model.ActionRun) {
+	notifyWorkflowRun(ctx, run.TriggerUser, run, api.HookWorkflowRunInProgress)
+}
+
+func (m *webhookNotifier) CompletedWorkflowRun(ctx context.Context, run *actions_model.ActionRun) {
+	notifyWorkflowRun(ctx, run.TriggerUser, run, api.HookWorkflowRunCompleted)
 }

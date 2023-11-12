@@ -6,6 +6,7 @@ package notify
 import (
 	"context"
 
+	actions_model "code.gitea.io/gitea/models/actions"
 	issues_model "code.gitea.io/gitea/models/issues"
 	packages_model "code.gitea.io/gitea/models/packages"
 	repo_model "code.gitea.io/gitea/models/repo"
@@ -365,5 +366,23 @@ func PackageDelete(ctx context.Context, doer *user_model.User, pd *packages_mode
 func ChangeDefaultBranch(ctx context.Context, repo *repo_model.Repository) {
 	for _, notifier := range notifiers {
 		notifier.ChangeDefaultBranch(ctx, repo)
+	}
+}
+
+func RequestedWorkflowRun(ctx context.Context, run *actions_model.ActionRun) {
+	for _, notifier := range notifiers {
+		notifier.RequestedWorkflowRun(ctx, run)
+	}
+}
+
+func StartedWorkflowRun(ctx context.Context, run *actions_model.ActionRun) {
+	for _, notifier := range notifiers {
+		notifier.StartedWorkflowRun(ctx, run)
+	}
+}
+
+func CompletedWorkflowRun(ctx context.Context, run *actions_model.ActionRun) {
+	for _, notifier := range notifiers {
+		notifier.CompletedWorkflowRun(ctx, run)
 	}
 }

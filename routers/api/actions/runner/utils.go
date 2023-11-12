@@ -17,6 +17,7 @@ import (
 	secret_module "code.gitea.io/gitea/modules/secret"
 	"code.gitea.io/gitea/modules/setting"
 	"code.gitea.io/gitea/services/actions"
+	notify_service "code.gitea.io/gitea/services/notify"
 
 	runnerv1 "code.gitea.io/actions-proto-go/runner/v1"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -30,6 +31,9 @@ func pickTask(ctx context.Context, runner *actions_model.ActionRunner) (*runnerv
 	if !ok {
 		return nil, false, nil
 	}
+
+	// notify action in progress
+	notify_service.StartedWorkflowRun(ctx, t.Job.Run)
 
 	actions.CreateCommitStatus(ctx, t.Job)
 

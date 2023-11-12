@@ -28,6 +28,7 @@ type HookEvents struct {
 	Repository               bool `json:"repository"`
 	Release                  bool `json:"release"`
 	Package                  bool `json:"package"`
+	WorkflowRun              bool `json:"workflow_run"`
 }
 
 // ParseHookEvents converts a list of strings to HookEvents
@@ -54,6 +55,7 @@ func ParseHookEvents(eventTypes []string) HookEvents {
 		Wiki:                     util.SliceContainsString(eventTypes, HookEventWiki.Event(), caseInsensitive),
 		Repository:               util.SliceContainsString(eventTypes, HookEventRepository.Event(), caseInsensitive),
 		Release:                  util.SliceContainsString(eventTypes, HookEventRelease.Event(), caseInsensitive),
+		WorkflowRun:              util.SliceContainsString(eventTypes, HookEventWorkflowRun.Event(), caseInsensitive),
 	}
 }
 
