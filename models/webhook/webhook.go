@@ -304,6 +304,11 @@ func (w *Webhook) HasPullRequestReviewRequestEvent() bool {
 		(w.ChooseEvents && w.HookEvents.PullRequestReviewRequest)
 }
 
+// HasWorkflowRunEvent returns if hook enabled workflow run event.
+func (w *Webhook) HasWorkflowRunEvent() bool {
+	return w.SendEverything || (w.ChooseEvents && w.HookEvents.WorkflowRun)
+}
+
 // EventCheckers returns event checkers
 func (w *Webhook) EventCheckers() []struct {
 	Has  func() bool
@@ -336,6 +341,7 @@ func (w *Webhook) EventCheckers() []struct {
 		{w.HasReleaseEvent, webhook_module.HookEventRelease},
 		{w.HasPackageEvent, webhook_module.HookEventPackage},
 		{w.HasPullRequestReviewRequestEvent, webhook_module.HookEventPullRequestReviewRequest},
+		{w.HasWorkflowRunEvent, webhook_module.HookEventWorkflowRun},
 	}
 }
 

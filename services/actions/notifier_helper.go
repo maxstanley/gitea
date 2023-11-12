@@ -23,6 +23,7 @@ import (
 	api "code.gitea.io/gitea/modules/structs"
 	webhook_module "code.gitea.io/gitea/modules/webhook"
 	"code.gitea.io/gitea/services/convert"
+	notify_service "code.gitea.io/gitea/services/notify"
 
 	"github.com/nektos/act/pkg/jobparser"
 	"github.com/nektos/act/pkg/model"
@@ -272,6 +273,8 @@ func handleWorkflows(
 			log.Error("InsertRun: %v", err)
 			continue
 		}
+
+		notify_service.RequestedWorkflowRun(ctx, run)
 
 		alljobs, _, err := actions_model.FindRunJobs(ctx, actions_model.FindRunJobOptions{RunID: run.ID})
 		if err != nil {

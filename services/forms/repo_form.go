@@ -253,6 +253,7 @@ type WebhookForm struct {
 	Wiki                     bool
 	Repository               bool
 	Package                  bool
+	WorkflowRun              bool
 	Active                   bool
 	BranchFilter             string `binding:"GlobPattern"`
 	AuthorizationHeader      string

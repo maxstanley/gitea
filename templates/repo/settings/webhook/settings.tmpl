@@ -109,6 +109,17 @@
 			</div>
 		</div>
 
+		<!-- Workflow -->
+		<div class="seven wide column">
+			<div class="field">
+				<div class="ui checkbox">
+					<input name="workflow_run" type="checkbox" {{if .Webhook.WorkflowRun}}checked{{end}}>
+					<label>{{ctx.Locale.Tr "repo.settings.event_workflow_run"}}</label>
+					<span class="help">{{ctx.Locale.Tr "repo.settings.event_workflow_run_desc"}}</span>
+				</div>
+			</div>
+		</div>
+
 		<!-- Issue Events -->
 		<div class="fourteen wide column">
 			<label>{{ctx.Locale.Tr "repo.settings.event_header_issue"}}</label>

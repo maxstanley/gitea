@@ -6,6 +6,7 @@ package notify
 import (
 	"context"
 
+	actions_model "code.gitea.io/gitea/models/actions"
 	issues_model "code.gitea.io/gitea/models/issues"
 	packages_model "code.gitea.io/gitea/models/packages"
 	repo_model "code.gitea.io/gitea/models/repo"
@@ -74,4 +75,8 @@ type Notifier interface {
 	PackageDelete(ctx context.Context, doer *user_model.User, pd *packages_model.PackageDescriptor)
 
 	ChangeDefaultBranch(ctx context.Context, repo *repo_model.Repository)
+
+	RequestedWorkflowRun(ctx context.Context, run *actions_model.ActionRun)
+	StartedWorkflowRun(ctx context.Context, run *actions_model.ActionRun)
+	CompletedWorkflowRun(ctx context.Context, run *actions_model.ActionRun)
 }
